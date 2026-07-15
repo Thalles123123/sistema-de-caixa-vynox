@@ -1,5 +1,5 @@
 export function isDatabaseConfigured() {
-  const value = process.env.DATABASE_URL?.trim();
+  const value = (process.env.DATABASE_URL ?? process.env.NETLIFY_DB_URL)?.trim();
   return Boolean(value && value.startsWith("postgresql://"));
 }
 
@@ -10,4 +10,4 @@ export function isGoogleOAuthConfigured() {
 }
 
 export const databaseUnavailableMessage =
-  "O banco PostgreSQL ainda nao esta configurado ou iniciado. Execute CONFIGURAR-SITE.bat e tente novamente.";
+  "O banco PostgreSQL ainda nao esta disponivel. Tente novamente em alguns instantes.";
