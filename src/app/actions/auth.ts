@@ -40,6 +40,7 @@ export async function registerAction(
   if (!parsed.success)
     return { ok: false, message: parsed.error.issues[0].message };
   const email = parsed.data.email.toLowerCase();
+  const apiKey = process.env.RESEND_API_KEY;
   const token = randomBytes(32).toString("hex");
   try {
     if (await prisma.user.findUnique({ where: { email } }))
@@ -49,21 +50,23 @@ export async function registerAction(
         data: {
           name: parsed.data.name,
           email,
+          emailVerified: apiKey ? null : new Date(),
           passwordHash: await hash(parsed.data.password, 12),
         },
       });
-      await tx.verificationToken.create({
-        data: {
-          identifier: email,
-          token,
-          expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        },
-      });
+      if (apiKey) {
+        await tx.verificationToken.create({
+          data: {
+            identifier: email,
+            token,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          },
+        });
+      }
     });
   } catch {
     return { ok: false, message: databaseUnavailableMessage };
   }
-  const apiKey = process.env.RESEND_API_KEY;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   if (apiKey) {
     const resend = new Resend(apiKey);
@@ -80,14 +83,9 @@ export async function registerAction(
       message: "Conta criada. Enviamos a confirmação para seu e-mail.",
     };
   }
-  if (process.env.NODE_ENV !== "production")
-    console.info(
-      `[DEV] Verificacao: ${appUrl}/api/verificar-email?token=${token}&email=${encodeURIComponent(email)}`,
-    );
   return {
     ok: true,
-    message:
-      "Conta criada. Configure o Resend para receber o link; em desenvolvimento, ele foi exibido no terminal.",
+    message: "Conta criada e ativada. Você já pode entrar.",
   };
 }
 
