@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  INACTIVE
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String               @id @default(cuid())
+  name          String?
+  email         String               @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          UserRole             @default(CUSTOMER)
+  blockedAt     DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  profile       CompanyProfile?
+  subscriptions Subscription[]
+  payments      Payment[]
+  auditLogs     AuditLog[]           @relation("AuditActor")
+  resets        PasswordResetToken[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model CompanyProfile {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  fullName    String
+  companyName String
+  document    String
+  phone       String
+  address     String
+  city        String
+  state       String
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Plan {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  name          String
+  description   String
+  monthlyPrice  Decimal        @db.Decimal(10, 2)
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+  payments      Payment[]
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String
+  planId    String
+  status    SubscriptionStatus @default(INACTIVE)
+  startsAt  DateTime?
+  expiresAt DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      Plan               @relation(fields: [planId], references: [id])
+  payments  Payment[]
+
+  @@index([userId, status])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  planId          String
+  subscriptionId  String?
+  amount          Decimal       @db.Decimal(10, 2)
+  status          PaymentStatus @default(PENDING)
+  rejectionReason String?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            Plan          @relation(fields: [planId], references: [id])
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  proof           PaymentProof?
+
+  @@index([status, createdAt])
+}
+
+model PaymentProof {
+  id           String   @id @default(cuid())
+  paymentId    String   @unique
+  storageKey   String
+  originalName String
+  mimeType     String
+  size         Int
+  sha256       String
+  uploadedAt   DateTime @default(now())
+  payment      Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model PixSettings {
+  id              String   @id @default("default")
+  keyType         String   @default("PHONE")
+  pixKey          String   @default("+5516993701293")
+  qrCodeImage     String?
+  checkoutMessage String?
+  updatedAt       DateTime @updatedAt
+}
+
+model SupportSettings {
+  id              String   @id @default("default")
+  phone           String   @default("+5516993701293")
+  whatsappMessage String?
+  updatedAt       DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model LoginAttempt {
+  id         String   @id @default(cuid())
+  identifier String
+  ipAddress  String
+  succeeded  Boolean
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, ipAddress, createdAt])
+}

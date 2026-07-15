@@ -1,0 +1,2 @@
+import { AuthForm } from "@/components/auth-form";import { AuthLayout } from "@/components/auth-layout";
+export default async function ResetPage({searchParams}:{searchParams:Promise<{token?:string}>}){const {token=""}=await searchParams;return <AuthLayout title="Defina uma nova senha" text="Use pelo menos 8 caracteres, uma maiúscula e um número."><AuthForm mode="reset" token={token}/></AuthLayout>}

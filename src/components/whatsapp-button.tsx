@@ -1,0 +1,2 @@
+import { MessageCircle } from "lucide-react";
+export function WhatsAppButton(){return <a className="whatsapp" aria-label="Falar pelo WhatsApp" target="_blank" href="https://wa.me/5516993701293?text=Ol%C3%A1%21%20Vim%20pelo%20site%20do%20Sistema%20de%20Caixa%20Pro%20e%20gostaria%20de%20saber%20mais%20sobre%20o%20plano%20de%20R%24%20100%2C00%20por%20m%C3%AAs."><MessageCircle/><span>Fale com a gente</span></a>}
